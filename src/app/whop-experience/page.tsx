@@ -1,14 +1,19 @@
 'use client';
 
-import Dashboard from '@/app/page';
-
 export default function WhopExperience() {
-  // Use the test company ID that's already set up and working
-  const companyId = 'biz_NeZJ3r0YZTjTCQ';
-  
   return (
-    <div>
-      <Dashboard />
+    <div style={{
+      padding: '40px',
+      backgroundColor: '#0f172a',
+      color: 'white',
+      minHeight: '100vh',
+      fontFamily: 'system-ui'
+    }}>
+      <h1>✅ Giveaway Master Loaded!</h1>
+      <p>App is running in Whop iframe</p>
+      <p style={{ fontSize: '12px', color: '#888' }}>
+        Loading dashboard with test company ID...
+      </p>
     </div>
   );
 }

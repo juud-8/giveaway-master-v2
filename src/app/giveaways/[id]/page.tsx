@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { Suspense, useEffect, useState } from 'react';
 import { useParams, useSearchParams, useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 import { formatDistanceToNow, format } from 'date-fns';
@@ -34,7 +34,7 @@ interface Winner {
   selected_at: string;
 }
 
-export default function GiveawayDetail() {
+function GiveawayDetailContent() {
   const params = useParams();
   const searchParams = useSearchParams();
   const router = useRouter();
@@ -401,5 +401,13 @@ export default function GiveawayDetail() {
         </div>
       </main>
     </div>
+  );
+}
+
+export default function GiveawayDetail() {
+  return (
+    <Suspense fallback={<div className="flex items-center justify-center min-h-screen"><p>Loading...</p></div>}>
+      <GiveawayDetailContent />
+    </Suspense>
   );
 }

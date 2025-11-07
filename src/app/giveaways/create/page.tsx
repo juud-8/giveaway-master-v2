@@ -1,12 +1,12 @@
 'use client';
 
-import { useState } from 'react';
+import { Suspense, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 import { ArrowLeft, Loader } from 'lucide-react';
 import Link from 'next/link';
 
-export default function CreateGiveaway() {
+function CreateGiveawayContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const companyId = searchParams.get('companyId');
@@ -229,5 +229,13 @@ export default function CreateGiveaway() {
         </form>
       </main>
     </div>
+  );
+}
+
+export default function CreateGiveaway() {
+  return (
+    <Suspense fallback={<div className="flex items-center justify-center min-h-screen"><p>Loading...</p></div>}>
+      <CreateGiveawayContent />
+    </Suspense>
   );
 }

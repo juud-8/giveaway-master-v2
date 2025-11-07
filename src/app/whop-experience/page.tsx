@@ -1,23 +1,26 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import Dashboard from '@/app/page';
 
 export default function WhopExperience() {
-  const [companyId, setCompanyId] = useState<string | null>(null);
+  const [mounted, setMounted] = useState(false);
+  const router = useRouter();
 
   useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    const cid = params.get('companyId');
-    
-    if (cid) {
-      setCompanyId(cid);
-    }
-  }, []);
+    setMounted(true);
 
-  if (companyId) {
-    return <Dashboard />;
-  }
+    // Get companyId from URL or Whop context
+    const params = new URLSearchParams(window.location.search);
+    const companyId = params.get('companyId') || 'biz_NeZJ3r0YZTjTCQ'; // Fallback to your test company
+
+    if (companyId) {
+      router.push(`/?companyId=${companyId}`);
+    }
+  }, [router]);
+
+  if (!mounted) return null;
 
   return <Dashboard />;
 }

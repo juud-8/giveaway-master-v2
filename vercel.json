@@ -1,9 +1,5 @@
 {
-  "analytics": false,
   "speedInsights": {
-    "enabled": false
-  },
-  "webAnalytics": {
     "enabled": false
   }
 }

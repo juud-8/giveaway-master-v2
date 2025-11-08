@@ -1,18 +1,9 @@
-import type { Metadata, Viewport } from 'next';
-import '@/styles/globals.css';
+import type { Metadata } from "next";
+import "./globals.css";
 
 export const metadata: Metadata = {
-  title: 'Giveaway Master',
-  description: 'Manage giveaways for your Whop store',
-  manifest: '/manifest.json',
-  icons: {
-    icon: '/icon.svg',
-    apple: '/icon.svg',
-  },
-};
-
-export const viewport: Viewport = {
-  themeColor: '#0f172a',
+  title: "Giveaway Master",
+  description: "Manage and track your giveaways",
 };
 
 export default function RootLayout({
@@ -21,23 +12,23 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en">
+    <html lang="en" suppressHydrationWarning>
       <head>
         <script
           dangerouslySetInnerHTML={{
             __html: `
-              // Disable Vercel Speed Insights in Whop iframe
               window.__VERCEL_DISABLED__ = true;
               if (window.location !== window.parent.location) {
-                // We're in an iframe - disable all Vercel tracking
-                Object.defineProperty(window, '__VERCEL_ANALYTICS_ID', { value: '' });
-                Object.defineProperty(window, '__VERCEL_ANALYTICS_ID_PROD', { value: '' });
+                window.__VERCEL_ANALYTICS_ID = '';
+                window.__VERCEL_ANALYTICS_ID_PROD = '';
               }
             `,
           }}
         />
       </head>
-      <body>{children}</body>
+      <body className="bg-slate-950 text-white">
+        {children}
+      </body>
     </html>
   );
 }

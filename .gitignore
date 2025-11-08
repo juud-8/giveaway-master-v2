@@ -27,3 +27,11 @@ yarn-debug.log*
 yarn-error.log*
 lerna-debug.log*
 .pnpm-debug.log*
+
+# Temporary analysis files
+INDEX.md
+code_sections.md
+debugging_guide.md
+file_reference.md
+summary.md
+whop_analysis.md

@@ -2,11 +2,12 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { WhopApp } from '@/lib/iframe';
 
 interface WhopContext {
   companyId: string;
   userId?: string | null;
-  resolvedBy?: 'url' | 'slug' | 'postMessage';
+  resolvedBy?: 'url' | 'slug' | 'sdk' | 'postMessage';
   companyName?: string;
 }
 
@@ -49,172 +50,157 @@ export default function WhopExperience() {
       }
     };
 
-    const inIframe = window.self !== window.top;
+    const inIframe = typeof window !== 'undefined' && window.self !== window.top;
     setIsInIframe(inIframe);
     addDebug(`Running in ${inIframe ? 'iframe' : 'standalone'} mode`);
 
-    const urlParams = new URLSearchParams(window.location.search);
-    const companyId = urlParams.get('companyId') || urlParams.get('company_id');
-    const userId = urlParams.get('userId') || urlParams.get('user_id');
-
-    addDebug(`URL params - companyId: ${companyId}, userId: ${userId}`);
-    addDebug(
-      `All params: ${Array.from(urlParams.entries())
-        .map(([k, v]) => `${k}=${v}`)
-        .join(', ')}`
-    );
-
-    if (companyId) {
-      addDebug(`Found companyId in URL: ${companyId}`);
-      setWhopContext({ companyId, userId, resolvedBy: 'url' });
-      setTimeout(() => {
-        addDebug(`Redirecting to dashboard with companyId: ${companyId}`);
-        router.push(`/?companyId=${companyId}`);
-      }, 500);
-    } else {
-      const slugFromParams =
-        urlParams.get('experienceSlug') ||
-        urlParams.get('experienceId') ||
-        urlParams.get('slug');
-      const slugFromPath = extractSlugFromPath(window.location.pathname);
-      const slugFromReferrer = extractSlugFromReferrer();
-
-      const identifierCandidate =
-        slugFromParams || slugFromPath || slugFromReferrer || null;
-
-      if (identifierCandidate && resolvingIdentifierRef.current !== identifierCandidate) {
-        resolvingIdentifierRef.current = identifierCandidate;
-        addDebug(
-          `Attempting to resolve companyId via identifier: ${identifierCandidate}`
-        );
-
-        const resolveCompany = async (identifier: string) => {
-          try {
-            const response = await fetch(
-              `/api/whop-company?identifier=${encodeURIComponent(identifier)}`
-            );
-
-            if (!response.ok) {
-              const payload = await response.json().catch(() => ({}));
-              throw new Error(
-                payload?.error ||
-                  `Failed to resolve company (status ${response.status})`
-              );
-            }
-
-            const data = await response.json();
-            const resolvedCompanyId = data?.company?.id;
-
-            if (resolvedCompanyId) {
-              addDebug(
-                `Resolved companyId ${resolvedCompanyId} (name: ${data.company?.name || 'unknown'})`
-              );
-              setWhopContext({
-                companyId: resolvedCompanyId,
-                userId,
-                resolvedBy: 'slug',
-                companyName: data.company?.name,
-              });
-              setTimeout(() => {
-                addDebug(`Redirecting to dashboard with resolved companyId: ${resolvedCompanyId}`);
-                router.push(`/?companyId=${resolvedCompanyId}`);
-              }, 500);
-            } else {
-              throw new Error('Whop company response missing id');
-            }
-          } catch (error) {
-            addDebug(
-              `Failed to resolve identifier "${identifier}": ${
-                error instanceof Error ? error.message : String(error)
-              }`
-            );
-          }
-        };
-
-        resolveCompany(identifierCandidate);
-      } else if (!identifierCandidate) {
-        addDebug('No slug found in URL or referrer, awaiting other context');
-      }
-    }
-
+    // Try to get context from Whop SDK first (for iframe mode)
     if (inIframe) {
-      addDebug('Setting up postMessage listener');
+      addDebug('Initializing Whop SDK for iframe context...');
 
-      const allowedOrigins = [
-        'https://whop.com',
-        'https://app.whop.com',
-        /https:\/\/.*\.whop\.com$/,
-        /https:\/\/.*\.apps\.whop\.com$/,
-      ];
+      // The WhopApp SDK automatically handles iframe communication
+      // and will provide user context via the SDK methods
+      const tryWhopSDK = async () => {
+        try {
+          addDebug('Waiting for Whop SDK to load context...');
 
-      const handleMessage = (event: MessageEvent) => {
-        const isAllowedOrigin = allowedOrigins.some((origin) => {
-          if (typeof origin === 'string') {
-            return event.origin === origin;
+          // Wait a short moment for SDK to initialize
+          await new Promise(resolve => setTimeout(resolve, 1000));
+
+          // Check if SDK provided context via URL params after initialization
+          const urlParams = new URLSearchParams(window.location.search);
+          const companyId = urlParams.get('companyId') || urlParams.get('company_id');
+
+          if (companyId) {
+            addDebug(`Got context from Whop SDK via URL: company ${companyId}`);
+            setWhopContext({
+              companyId,
+              userId: urlParams.get('userId') || urlParams.get('user_id') || null,
+              resolvedBy: 'sdk',
+            });
+            setTimeout(() => {
+              addDebug(`Redirecting to dashboard with SDK companyId: ${companyId}`);
+              router.push(`/?companyId=${companyId}`);
+            }, 500);
+            return true;
+          } else {
+            addDebug('Whop SDK did not provide context via URL, trying fallback methods');
           }
-          return origin.test(event.origin);
-        });
-
-        if (!isAllowedOrigin) {
-          addDebug(`Rejected message from unknown origin: ${event.origin}`);
-          return;
+        } catch (error) {
+          addDebug(`Whop SDK error: ${error instanceof Error ? error.message : String(error)}`);
         }
-
-        if (event.data && event.data.type) {
-          addDebug(`Received Whop message: ${JSON.stringify(event.data)}`);
-
-          switch (event.data.type) {
-            case 'whop:context':
-              if (event.data.context?.companyId) {
-                setWhopContext({
-                  companyId: event.data.context.companyId,
-                  userId: event.data.context.userId,
-                  resolvedBy: 'postMessage',
-                });
-              }
-              break;
-            case 'whop:ready':
-              if (window.parent && event.source) {
-                window.parent.postMessage({ type: 'app:ready' }, event.origin);
-              }
-              break;
-          }
-        }
+        return false;
       };
 
-      window.addEventListener('message', handleMessage);
+      tryWhopSDK().then((success) => {
+        if (success) return; // SDK worked, we're done
 
-      if (window.parent) {
-        const sendReady = () => {
-          try {
-            window.parent.postMessage({ type: 'app:loaded' }, '*');
-            addDebug('Sent app:loaded message to parent');
-          } catch (error) {
-            addDebug(`Failed to send ready message: ${error}`);
-          }
-        };
-
-        sendReady();
-        setTimeout(sendReady, 100);
-        setTimeout(sendReady, 500);
-        setTimeout(sendReady, 1000);
-      }
-
-      return () => {
-        window.removeEventListener('message', handleMessage);
-      };
+        // SDK didn't work, fall back to manual methods
+        addDebug('Trying fallback methods...');
+        checkURLAndSlugParams();
+      });
+    } else {
+      // Not in iframe, use URL/slug methods directly
+      checkURLAndSlugParams();
     }
 
+    function checkURLAndSlugParams() {
+      const urlParams = new URLSearchParams(window.location.search);
+      const companyId = urlParams.get('companyId') || urlParams.get('company_id');
+      const userId = urlParams.get('userId') || urlParams.get('user_id');
+
+      addDebug(`URL params - companyId: ${companyId}, userId: ${userId}`);
+      addDebug(
+        `All params: ${Array.from(urlParams.entries())
+          .map(([k, v]) => `${k}=${v}`)
+          .join(', ')}`
+      );
+
+      if (companyId) {
+        addDebug(`Found companyId in URL: ${companyId}`);
+        setWhopContext({ companyId, userId, resolvedBy: 'url' });
+        setTimeout(() => {
+          addDebug(`Redirecting to dashboard with companyId: ${companyId}`);
+          router.push(`/?companyId=${companyId}`);
+        }, 500);
+      } else {
+        const slugFromParams =
+          urlParams.get('experienceSlug') ||
+          urlParams.get('experienceId') ||
+          urlParams.get('slug');
+        const slugFromPath = extractSlugFromPath(window.location.pathname);
+        const slugFromReferrer = extractSlugFromReferrer();
+
+        const identifierCandidate =
+          slugFromParams || slugFromPath || slugFromReferrer || null;
+
+        if (identifierCandidate && resolvingIdentifierRef.current !== identifierCandidate) {
+          resolvingIdentifierRef.current = identifierCandidate;
+          addDebug(
+            `Attempting to resolve companyId via identifier: ${identifierCandidate}`
+          );
+
+          const resolveCompany = async (identifier: string) => {
+            try {
+              const response = await fetch(
+                `/api/whop-company?identifier=${encodeURIComponent(identifier)}`
+              );
+
+              if (!response.ok) {
+                const payload = await response.json().catch(() => ({}));
+                throw new Error(
+                  payload?.error ||
+                    `Failed to resolve company (status ${response.status})`
+                );
+              }
+
+              const data = await response.json();
+              const resolvedCompanyId = data?.company?.id;
+
+              if (resolvedCompanyId) {
+                addDebug(
+                  `Resolved companyId ${resolvedCompanyId} (name: ${data.company?.name || 'unknown'})`
+                );
+                setWhopContext({
+                  companyId: resolvedCompanyId,
+                  userId,
+                  resolvedBy: 'slug',
+                  companyName: data.company?.name,
+                });
+                setTimeout(() => {
+                  addDebug(`Redirecting to dashboard with resolved companyId: ${resolvedCompanyId}`);
+                  router.push(`/?companyId=${resolvedCompanyId}`);
+                }, 500);
+              } else {
+                throw new Error('Whop company response missing id');
+              }
+            } catch (error) {
+              addDebug(
+                `Failed to resolve identifier "${identifier}": ${
+                  error instanceof Error ? error.message : String(error)
+                }`
+              );
+            }
+          };
+
+          resolveCompany(identifierCandidate);
+        } else if (!identifierCandidate) {
+          addDebug('No slug found in URL or referrer, awaiting other context');
+        }
+      }
+    }
+
+    // Cleanup function (if needed)
     return undefined;
   }, [addDebug, router]);
 
-  // If we have company context from postMessage, redirect to main dashboard
+  // Handle SDK context that might come in after initial load
   useEffect(() => {
-    if (whopContext?.companyId && whopContext.resolvedBy === 'postMessage') {
-      addDebug('Context received via postMessage, redirecting to dashboard');
-      router.push(`/?companyId=${whopContext.companyId}`);
+    if (whopContext?.companyId && whopContext.resolvedBy === 'sdk' && !whopContext.userId) {
+      // SDK might send updated context with userId
+      addDebug('SDK context updated');
     }
-  }, [addDebug, whopContext, router]);
+  }, [addDebug, whopContext]);
 
   return (
     <div style={{

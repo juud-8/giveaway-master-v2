@@ -13,6 +13,11 @@ const nextConfig = {
     NEXT_PUBLIC_WHOP_APP_ID: process.env.NEXT_PUBLIC_WHOP_APP_ID,
     NEXT_PUBLIC_WHOP_COMPANY_ID: process.env.NEXT_PUBLIC_WHOP_COMPANY_ID,
   },
+  // Disable Vercel Analytics and Speed Insights to prevent CSP violations in Whop iframe
+  analyticsId: '',
+  speedInsights: {
+    enabled: false,
+  },
   async headers() {
     return [
       {
@@ -31,4 +36,5 @@ const nextConfig = {
     ];
   },
 };
+
 module.exports = nextConfig;

@@ -13,28 +13,21 @@ const nextConfig = {
     NEXT_PUBLIC_WHOP_APP_ID: process.env.NEXT_PUBLIC_WHOP_APP_ID,
     NEXT_PUBLIC_WHOP_COMPANY_ID: process.env.NEXT_PUBLIC_WHOP_COMPANY_ID,
   },
-  // Disable Vercel Analytics and Speed Insights to prevent CSP violations in Whop iframe
+  // Completely disable all Vercel services to prevent connection errors in Whop iframe
   analyticsId: '',
   speedInsights: {
     enabled: false,
   },
-  async headers() {
-    return [
-      {
-        source: '/:path*',
-        headers: [
-          {
-            key: 'X-Frame-Options',
-            value: 'ALLOW-FROM https://whop.com',
-          },
-          {
-            key: 'Content-Security-Policy',
-            value: "frame-ancestors 'self' https://whop.com https://*.whop.com https://*.apps.whop.com",
-          },
-        ],
-      },
-    ];
+  // Disable Vercel Toolbar in development
+  devIndicators: {
+    buildActivity: false,
+    buildActivityPosition: 'bottom-right',
   },
+  // Disable experimental features that might cause connection issues
+  experimental: {
+    webVitalsAttribution: [],
+  },
+  // Headers are now handled by middleware.ts for better control
 };
 
 module.exports = nextConfig;

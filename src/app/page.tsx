@@ -29,7 +29,9 @@ export default function Dashboard() {
         const cid = params.get('companyId');
         
         if (!cid) {
-          setError('No company ID found. Please access this app through Whop.');
+          setError(
+            'Waiting for Whop context. If this page was opened outside Whop, please relaunch it from your Whop dashboard.'
+          );
           setLoading(false);
           return;
         }

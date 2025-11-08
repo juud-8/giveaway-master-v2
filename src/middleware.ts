@@ -4,6 +4,20 @@ import type { NextRequest } from 'next/server';
 export function middleware(request: NextRequest) {
   const response = NextResponse.next();
 
+  // Extract Whop user token from headers and store in cookie for client-side access
+  const whopUserToken = request.headers.get('x-whop-user-token');
+  if (whopUserToken) {
+    // Store the token in a cookie so it's available for API routes
+    response.cookies.set('whop-user-token', whopUserToken, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'none', // Required for iframe embedding
+      maxAge: 60 * 60 * 24, // 24 hours
+    });
+
+    console.log('[Middleware] Whop user token detected and stored in cookie');
+  }
+
   // Enhanced headers for Whop iframe compatibility
   response.headers.set('X-Frame-Options', 'ALLOWALL');
   response.headers.delete('X-Frame-Options'); // Remove it entirely to let CSP handle framing

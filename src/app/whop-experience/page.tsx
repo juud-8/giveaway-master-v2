@@ -39,80 +39,111 @@ export default function WhopExperience() {
       return;
     }
 
-    // If no URL params and in iframe, try postMessage communication
-    if (inIframe) {
-      addDebug('No URL params found, setting up postMessage listener');
+    // Try to fetch context from server-side (JWT token in headers)
+    addDebug('Attempting to fetch Whop context from API...');
 
-      // Set up message listener for Whop SDK communication
-      const handleMessage = (event: MessageEvent) => {
-        // Only accept messages from Whop domains
-        const allowedOrigins = [
-          'https://whop.com',
-          'https://app.whop.com',
-          /https:\/\/.*\.whop\.com$/,
-          /https:\/\/.*\.apps\.whop\.com$/,
-        ];
-
-        const isAllowedOrigin = allowedOrigins.some(origin => {
-          if (typeof origin === 'string') {
-            return event.origin === origin;
-          }
-          return origin.test(event.origin);
+    const fetchContext = async () => {
+      try {
+        const response = await fetch('/api/whop/context', {
+          credentials: 'include', // Include cookies
         });
 
-        if (!isAllowedOrigin) {
-          addDebug(`Rejected message from unknown origin: ${event.origin}`);
-          return;
-        }
+        addDebug(`API response status: ${response.status}`);
 
-        // Handle Whop SDK messages
-        if (event.data && event.data.type) {
-          addDebug(`Received Whop message: ${JSON.stringify(event.data)}`);
+        if (response.ok) {
+          const data = await response.json();
+          addDebug(`Context received from API (source: ${data.source}): ${JSON.stringify(data.context)}`);
 
-          switch (event.data.type) {
-            case 'whop:context':
-              setWhopContext(event.data.context);
-              break;
-            case 'whop:ready':
-              // Send ready confirmation back to parent
-              if (window.parent && event.source) {
-                window.parent.postMessage(
-                  { type: 'app:ready' },
-                  event.origin
-                );
-              }
-              break;
+          if (data.context && data.context.companyId) {
+            setWhopContext(data.context);
+            return;
+          } else if (data.context && data.context.userId) {
+            // If we have userId but no companyId, still set the context
+            addDebug('Received userId but no companyId from API');
+            setWhopContext(data.context);
+            return;
           }
+        } else {
+          const errorData = await response.json();
+          addDebug(`API error: ${errorData.message || errorData.error}`);
         }
-      };
+      } catch (error) {
+        addDebug(`Failed to fetch context from API: ${error}`);
+      }
 
-      window.addEventListener('message', handleMessage);
+      // If API fetch failed and in iframe, try postMessage as last resort
+      if (inIframe) {
+        addDebug('API fetch failed, setting up postMessage listener as fallback');
 
-      // Notify parent that app is loaded
-      if (window.parent) {
-        const sendReady = () => {
-          try {
-            window.parent.postMessage(
-              { type: 'app:loaded' },
-              '*' // Use wildcard since we don't know the exact origin
-            );
-            addDebug('Sent app:loaded message to parent');
-          } catch (error) {
-            addDebug(`Failed to send ready message: ${error}`);
+        // Set up message listener for Whop SDK communication
+        const handleMessage = (event: MessageEvent) => {
+          // Only accept messages from Whop domains
+          const allowedOrigins = [
+            'https://whop.com',
+            'https://app.whop.com',
+            /https:\/\/.*\.whop\.com$/,
+            /https:\/\/.*\.apps\.whop\.com$/,
+          ];
+
+          const isAllowedOrigin = allowedOrigins.some(origin => {
+            if (typeof origin === 'string') {
+              return event.origin === origin;
+            }
+            return origin.test(event.origin);
+          });
+
+          if (!isAllowedOrigin) {
+            addDebug(`Rejected message from unknown origin: ${event.origin}`);
+            return;
+          }
+
+          // Handle Whop SDK messages
+          if (event.data && event.data.type) {
+            addDebug(`Received Whop message: ${JSON.stringify(event.data)}`);
+
+            switch (event.data.type) {
+              case 'whop:context':
+                setWhopContext(event.data.context);
+                break;
+              case 'whop:ready':
+                // Send ready confirmation back to parent
+                if (window.parent && event.source) {
+                  window.parent.postMessage(
+                    { type: 'app:ready' },
+                    event.origin
+                  );
+                }
+                break;
+            }
           }
         };
 
-        // Send immediately and retry a few times
-        sendReady();
-        setTimeout(sendReady, 100);
-        setTimeout(sendReady, 500);
-        setTimeout(sendReady, 1000);
-      }
+        window.addEventListener('message', handleMessage);
 
-      return () => {
-        window.removeEventListener('message', handleMessage);
-      };
-    }
+        // Notify parent that app is loaded
+        if (window.parent) {
+          const sendReady = () => {
+            try {
+              window.parent.postMessage(
+                { type: 'app:loaded' },
+                '*' // Use wildcard since we don't know the exact origin
+              );
+              addDebug('Sent app:loaded message to parent');
+            } catch (error) {
+              addDebug(`Failed to send ready message: ${error}`);
+            }
+          };
+
+          // Send immediately and retry a few times
+          sendReady();
+          setTimeout(sendReady, 100);
+          setTimeout(sendReady, 500);
+          setTimeout(sendReady, 1000);
+        }
+      }
+    };
+
+    fetchContext();
   }, [router]);
 
   // If we have company context from postMessage, redirect to main dashboard

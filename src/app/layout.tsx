@@ -22,6 +22,21 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en">
+      <head>
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `
+              // Disable Vercel Speed Insights in Whop iframe
+              window.__VERCEL_DISABLED__ = true;
+              if (window.location !== window.parent.location) {
+                // We're in an iframe - disable all Vercel tracking
+                Object.defineProperty(window, '__VERCEL_ANALYTICS_ID', { value: '' });
+                Object.defineProperty(window, '__VERCEL_ANALYTICS_ID_PROD', { value: '' });
+              }
+            `,
+          }}
+        />
+      </head>
       <body>{children}</body>
     </html>
   );

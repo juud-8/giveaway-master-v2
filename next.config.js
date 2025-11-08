@@ -2,11 +2,6 @@
 const nextConfig = {
   reactStrictMode: true,
   swcMinify: true,
-  // Optimize resource hints to prevent unused preload warnings
-  experimental: {
-    optimizeCss: true,
-  },
-  // Disable automatic CSS chunking that can cause preload issues
   compiler: {
     removeConsole: process.env.NODE_ENV === 'production' ? {
       exclude: ['error', 'warn'],

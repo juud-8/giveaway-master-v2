@@ -59,12 +59,12 @@ The resource https://whop.com/_next/static/chunks/52c533712b734a06.css was prelo
 **Root Cause:** Next.js was generating CSS chunk preload hints that weren't being used immediately.
 
 **Fix:**
-- Added `experimental.optimizeCss: true` to optimize CSS loading
 - Configured compiler settings to remove unnecessary console logs in production
 - These settings help Next.js better manage resource hints and reduce false warnings
+- Note: The `optimizeCss` experimental feature was initially tried but removed due to missing dependencies
 
 **Files Modified:**
-- `next.config.js` (added experimental.optimizeCss and compiler options)
+- `next.config.js` (added compiler options for console removal)
 
 ---
 
@@ -90,6 +90,24 @@ c28vfee5ar5wf1b2jux4.apps.whop.com/whop-experience:1 Failed to load resource: th
 
 **Files Modified:**
 - `src/app/whop-experience/page.tsx` (better error handling)
+
+---
+
+### 5. Next.js Metadata Configuration ✅
+
+**Warning:**
+```
+Unsupported metadata themeColor is configured in metadata export. Please move it to viewport export instead.
+```
+
+**Root Cause:** Next.js 14+ requires `themeColor` to be in a separate `viewport` export instead of the `metadata` export.
+
+**Fix:**
+- Moved `themeColor` from `metadata` export to new `viewport` export
+- Updated imports to include `Viewport` type from Next.js
+
+**Files Modified:**
+- `src/app/layout.tsx` (created viewport export)
 
 ---
 
@@ -140,5 +158,6 @@ To verify the fixes:
 | PostMessage origin mismatch | ✅ Fixed | Implemented iframe communication |
 | Unused CSS preload | ✅ Fixed | Optimized Next.js config |
 | 401 Whop auth | ⚠️ Partial | Needs OAuth configuration |
+| themeColor metadata warning | ✅ Fixed | Moved to viewport export |
 
-All fixable browser console errors have been resolved. The remaining 401 error requires external Whop platform configuration.
+All fixable browser console errors and build warnings have been resolved. The remaining 401 error requires external Whop platform configuration.

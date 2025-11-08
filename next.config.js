@@ -13,11 +13,6 @@ const nextConfig = {
     NEXT_PUBLIC_WHOP_APP_ID: process.env.NEXT_PUBLIC_WHOP_APP_ID,
     NEXT_PUBLIC_WHOP_COMPANY_ID: process.env.NEXT_PUBLIC_WHOP_COMPANY_ID,
   },
-  // Completely disable all Vercel services to prevent connection errors in Whop iframe
-  analyticsId: '',
-  speedInsights: {
-    enabled: false,
-  },
   // Disable Vercel Toolbar in development
   devIndicators: {
     buildActivity: false,

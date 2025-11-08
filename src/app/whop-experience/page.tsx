@@ -1,11 +1,10 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useRouter } from 'next/navigation';
 
 export default function WhopExperience() {
   const router = useRouter();
-  const searchParams = useSearchParams();
   const [isInIframe, setIsInIframe] = useState(false);
   const [whopContext, setWhopContext] = useState<any>(null);
   const [debugInfo, setDebugInfo] = useState<string[]>([]);
